@@ -2,15 +2,19 @@ from PySide2 import QtWidgets, QtGui, QtCore
 
 
 class SessionManager(QtWidgets.QDialog):
-    def __init__(self):
+    def __init__(self, configDb):
         super(SessionManager, self).__init__()
+
+        self.conn = configDb
+        # self.conn.row_factory = Row
+        self.curs = self.conn.cursor()        
         self.sessionIds = []
 
         self.initUI()
         self.show()
 
     def initUI(self):
-        self.labelNoSession = QtWidgets.QLabel('New here? In order to connect to a MySQL server, you have to create a so called "session" at first. Just click the "New" button on the bottom left to create your first session.\n\nGive it a friendly name (e.g. "Local DB Server") so you\'ll recall it the next time you start HeidiSQL.')
+        self.labelNoSession = QtWidgets.QLabel('新用户吗? 为了连接一个MySQL服务器, 首先你得创建一个“会话”。只需要单击左下方的“新建”按钮来创建一个新的会话。\n\n给它起一个友好的名称（比如：“本地数据库服务器”）。这样你就能在下次启动HeidiSQL时能想起来。')
         self.labelNoSession.setWordWrap(True)
         
         # Setup input fields for settings tab
@@ -34,11 +38,11 @@ class SessionManager(QtWidgets.QDialog):
         textStartupScript.setDisabled(True)
         self.textUser = QtWidgets.QLineEdit()
         
-        # Create the Server Manager tree
+        # 创建服务器管理树
         self.treeServerManager = QtWidgets.QTreeWidget(self)
         self.treeServerManager.header().close()
         self.treeServerManager.setRootIsDecorated(False)
-        # self.treeServerManager.itemSelectionChanged.connect(self.slotServerSelectionChanged)
+        self.treeServerManager.itemSelectionChanged.connect(self.slotServerSelectionChanged)
         
         # Layout for password text field and password check box
         layoutH6 = QtWidgets.QHBoxLayout()
@@ -109,11 +113,11 @@ class SessionManager(QtWidgets.QDialog):
         layoutH3.setStretch(0, 30)
         layoutH3.setStretch(1, 70)
         
-        # Setup signals
+        # 信号设置
         buttonNew.clicked.connect(self.slotButtonNewClicked)
         # buttonCancel.clicked.connect(self.slotButtonCancelClicked)
         # self.buttonDelete.clicked.connect(self.slotButtonDeleteClicked)
-        # self.buttonOpen.clicked.connect(self.slotButtonOpenClicked)
+        self.buttonOpen.clicked.connect(self.slotButtonOpenClicked)
         # self.buttonSave.clicked.connect(self.slotButtonSaveClicked)
 
         # self.textHostname.textEdited.connect(self.sessionModified)
@@ -173,3 +177,66 @@ class SessionManager(QtWidgets.QDialog):
     def slotButtonNewClicked(self):
         self.addNewServer()
         self.toggleSettingsPane()
+
+
+    def slotServerSelectionChanged(self):
+        # 加载设置
+        self.loadSettings()    
+
+
+    def loadSettings(self):
+        index = self.treeServerManager.indexOfTopLevelItem(self.treeServerManager.currentItem())
+
+        settings = None
+        if (index != -1):
+            self.curs = self.conn.execute("SELECT * FROM sessions WHERE id = ?", [self.sessionIds[index]])
+            settings = self.curs.fetchone()
+            self.currentSessionData = settings
+        
+        if settings != None:
+            self.textHostname.setText(settings['hostname'])
+            self.textUser.setText(settings['username'])
+            self.textPassword.setText(settings['password'])
+            self.spinPort.setValue(settings['port'])
+        else:
+            # 如果没有保存的配置，则初始化
+            self.initializeSessionData()
+            self.textHostname.setText('127.0.0.1')
+            self.textPassword.setText('123456');
+            self.textUser.setText('root')
+            self.spinPort.setValue(3306)
+
+
+    def initializeSessionData(self):
+        self.currentSessionData = {'hostname': '127.0.0.1', 'password': '123456', 'username': 'root', 'port': '3306'}
+
+
+    def slotButtonOpenClicked(self):
+        session = self.getCurrentSession()
+        applicationWindow = self.mainApplicationWindow
+
+        try:
+            dbServer = DatabaseServer(session['name'], applicationWindow, session['hostname'], session['username'], session['password'], session['port'])
+            applicationWindow.show()
+            applicationWindow.addDbServer(dbServer)
+            self.hide()
+
+        except MySQLdb._exceptions.OperationalError as e:
+            message = "Connection Error : %s" % e
+            QMessageBox.critical(self, 'Connection Error', message)
+
+
+    def getCurrentSession(self):
+        sessionIndex = self.treeServerManager.indexOfTopLevelItem(self.treeServerManager.currentItem())
+        session = {
+            'id': sessionIndex,
+            'name': self.treeServerManager.currentItem().text(0),
+            'network_type': self.comboNetworkType.currentIndex(),
+            'hostname': self.textHostname.text(),
+            'username': self.textUser.text(),
+            'password': self.textPassword.text(),
+            'port': self.spinPort.value(),
+            'index': self.sessionIds[sessionIndex]
+        }
+
+        return session            
