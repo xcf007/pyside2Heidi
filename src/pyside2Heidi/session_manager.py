@@ -2,7 +2,7 @@ from PySide2 import QtWidgets, QtGui, QtCore
 
 
 class SessionManager(QtWidgets.QDialog):
-    def __init__(self, configDb):
+    def __init__(self, mainApplicationWindow, configDb):
         super(SessionManager, self).__init__()
 
         self.conn = configDb
@@ -11,6 +11,8 @@ class SessionManager(QtWidgets.QDialog):
         self.sessionIds = []
 
         self.initUI()
+        # 主窗口
+        self.mainApplicationWindow = mainApplicationWindow
         self.show()
 
     def initUI(self):

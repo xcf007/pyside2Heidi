@@ -3,6 +3,7 @@ import os
 import PySide2
 from PySide2 import QtWidgets
 import sqlite3
+from main_application_window import MainApplicationWindow
 from session_manager import SessionManager
 os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.path.dirname(PySide2.__file__) + '/plugins/platforms'
 
@@ -25,7 +26,9 @@ class MainApplication:
             self.createSettingsTable()
 
         app = QtWidgets.QApplication(sys.argv)
-        sessionManager = SessionManager(configDb)
+        mainApplicationWindow = MainApplicationWindow(configDb)
+        mainApplicationWindow.hide()
+        sessionManager = SessionManager(mainApplicationWindow, configDb)
         self.sessionManager = sessionManager
         app.exec_()
 

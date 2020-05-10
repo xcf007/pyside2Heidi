@@ -1,0 +1,19 @@
+<RCC>
+  <qresource prefix="/icons">
+    <file>resources/icons/wrench.png</file>
+    <file>resources/icons/resultset_down.png</file>
+    <file>resources/icons/resultset_up.png</file>
+    <file>resources/icons/delete.png</file>
+    <file>resources/icons/add.png</file>
+    <file>resources/icons/resultset_next.png</file>
+    <file>resources/icons/arrow_refresh.png</file>
+    <file>resources/icons/page_white_gear.png</file>
+    <file>resources/icons/cross.png</file>
+    <file>resources/icons/arrow_refresh_small.png</file>
+    <file>resources/icons/heidi.ico</file>
+    <file>resources/icons/lightning.png</file>
+    <file>resources/icons/computer.png</file>
+    <file>resources/icons/database.png</file>
+    <file>resources/icons/table.png</file>
+  </qresource>
+</RCC>
