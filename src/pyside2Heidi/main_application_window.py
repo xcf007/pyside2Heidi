@@ -35,3 +35,7 @@ class MainApplicationWindow(QMainWindow):
 
         # databaseInfoTable.setContextMenuPolicy(Qt.CustomContextMenu)
         # databaseInfoTable.customContextMenuRequested.connect(self.databaseContextMenu)
+
+
+    def addDbServer(self, server):
+        pass

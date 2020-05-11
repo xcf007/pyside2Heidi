@@ -1,8 +1,9 @@
 import MySQLdb
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QTreeWidgetItem
-from PyQt5.QtSql import QSqlDatabase, QSqlQuery
+import MySQLdb.cursors
+from PySide2.QtCore import Qt
+from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import QTreeWidgetItem
+from PySide2.QtSql import QSqlDatabase, QSqlQuery
 from qthelpers.HeidiTreeWidgetItem import HeidiTreeWidgetItem
 from .database import Database
 import ctypes
@@ -24,7 +25,7 @@ class DatabaseServer:
         self.currentDatabase = None
         self.collations = list()
 
-        # ctypes.windll.LoadLibrary(r'D:\wamp64\bin\mysql\mysql5.7.21\lib\libmysql.dll')  # 加载驱动库
+        ctypes.windll.LoadLibrary(r'D:\wamp64\bin\mysql\mysql5.7.21\lib\libmysql.dll')  # 加载驱动库
         self.connection = MySQLdb.connect(host = hostname, user = username, passwd = password, port = port, cursorclass = MySQLdb.cursors.DictCursor)
         db = QSqlDatabase.addDatabase('QMYSQL', name)
         db.setHostName(hostname)

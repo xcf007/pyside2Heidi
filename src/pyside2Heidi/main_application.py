@@ -14,6 +14,7 @@ class MainApplication:
 
     def __init__(self):
         super().__init__()
+        
         self.configDb = sqlite3.connect('../userdata.db')
         configDb = self.configDb
         configDb.row_factory = sqlite3.Row
@@ -26,14 +27,22 @@ class MainApplication:
             self.createSettingsTable()
 
         app = QtWidgets.QApplication(sys.argv)
+
+        # 主窗口
         mainApplicationWindow = MainApplicationWindow(configDb)
         mainApplicationWindow.hide()
+
+        # 会话管理器
         sessionManager = SessionManager(mainApplicationWindow, configDb)
-        self.sessionManager = sessionManager
+        # self.sessionManager = sessionManager
+
         app.exec_()
 
 
     def createSettingsTable(self):
+        """
+        创建配置表
+        """
         cursor = self.configDb.cursor()
         cursor.execute("""
             CREATE TABLE settings(

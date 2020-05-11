@@ -1,4 +1,6 @@
 from PySide2 import QtWidgets, QtGui, QtCore
+import MySQLdb
+from database.database_server import DatabaseServer
 
 
 class SessionManager(QtWidgets.QDialog):
@@ -7,6 +9,8 @@ class SessionManager(QtWidgets.QDialog):
 
         self.conn = configDb
         # self.conn.row_factory = Row
+        mainApplicationWindow.configDb = self.conn
+
         self.curs = self.conn.cursor()        
         self.sessionIds = []
 

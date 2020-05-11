@@ -1,6 +1,6 @@
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QTableWidgetItem, QTreeWidgetItem
+from PySide2.QtCore import Qt
+from PySide2.QtGui import QIcon
+from PySide2.QtWidgets import QTableWidgetItem, QTreeWidgetItem
 from qthelpers.HeidiTreeWidgetItem import HeidiTreeWidgetItem
 from utilities.byte_sized_strings import byteSizedStrings
 from .table import Table
