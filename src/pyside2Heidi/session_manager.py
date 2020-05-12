@@ -1,4 +1,5 @@
 from PySide2 import QtWidgets, QtGui, QtCore
+from PySide2.QtWidgets import QShortcut
 import MySQLdb
 from database.database_server import DatabaseServer
 
@@ -11,10 +12,11 @@ class SessionManager(QtWidgets.QDialog):
         # self.conn.row_factory = Row
         mainApplicationWindow.configDb = self.conn
 
-        self.curs = self.conn.cursor()        
+        self.curs = self.conn.cursor()
         self.sessionIds = []
 
         self.initUI()
+        self.loadSessionManager()
         # 主窗口
         self.mainApplicationWindow = mainApplicationWindow
         self.show()
@@ -84,7 +86,7 @@ class SessionManager(QtWidgets.QDialog):
         self.buttonDelete.setDisabled(True)
         self.buttonOpen = QtWidgets.QPushButton('打开')
         self.buttonOpen.setDisabled(True)
-        buttonCancel = QtWidgets.QPushButton('取消')
+        self.buttonCancel = QtWidgets.QPushButton('取消')
         
         # 会话管理底部的按钮布局
         layoutH4 = QtWidgets.QHBoxLayout()
@@ -105,7 +107,7 @@ class SessionManager(QtWidgets.QDialog):
         layoutH5 = QtWidgets.QHBoxLayout()
         layoutH5.addStretch(1);
         layoutH5.addWidget(self.buttonOpen)
-        layoutH5.addWidget(buttonCancel)
+        layoutH5.addWidget(self.buttonCancel)
         
         self.layoutV2 = QtWidgets.QVBoxLayout()
         self.layoutV2.addWidget(self.labelNoSession)
@@ -124,12 +126,12 @@ class SessionManager(QtWidgets.QDialog):
         # buttonCancel.clicked.connect(self.slotButtonCancelClicked)
         # self.buttonDelete.clicked.connect(self.slotButtonDeleteClicked)
         self.buttonOpen.clicked.connect(self.slotButtonOpenClicked)
-        # self.buttonSave.clicked.connect(self.slotButtonSaveClicked)
+        self.buttonSave.clicked.connect(self.slotButtonSaveClicked)
 
-        # self.textHostname.textEdited.connect(self.sessionModified)
-        # self.textUser.textEdited.connect(self.sessionModified)
-        # self.textPassword.textEdited.connect(self.sessionModified)
-        # self.spinPort.valueChanged.connect(self.sessionModified)
+        self.textHostname.textEdited.connect(self.sessionModified)
+        self.textUser.textEdited.connect(self.sessionModified)
+        self.textPassword.textEdited.connect(self.sessionModified)
+        self.spinPort.valueChanged.connect(self.sessionModified)
 
         # QShortcut("Ctrl+S", self, self.slotButtonSaveClicked)
         
@@ -161,8 +163,7 @@ class SessionManager(QtWidgets.QDialog):
             self.layoutV2.removeItem(self.layoutV2.itemAt(1))
             self.layoutV2.removeWidget(self.labelNoSession)
             self.layoutV2.insertWidget(0, self.tabWidget)
-            # self.layoutV2.setStretch(0, 1)
-            # self.layoutV2.setStretch(1, 1)
+            self.layoutV2.setStretch(0, 1)
             self.tabWidget.setVisible(True)
             self.buttonDelete.setEnabled(True)
             self.buttonOpen.setEnabled(True)
@@ -181,6 +182,9 @@ class SessionManager(QtWidgets.QDialog):
 
 
     def slotButtonNewClicked(self):
+        """
+        新建按钮点击信号槽
+        """
         self.addNewServer()
         self.toggleSettingsPane()
 
@@ -207,6 +211,7 @@ class SessionManager(QtWidgets.QDialog):
         else:
             # 如果没有保存的配置，则初始化
             self.initializeSessionData()
+
             self.textHostname.setText('127.0.0.1')
             self.textPassword.setText('123456');
             self.textUser.setText('root')
@@ -218,6 +223,9 @@ class SessionManager(QtWidgets.QDialog):
 
 
     def slotButtonOpenClicked(self):
+        """
+        打开按钮单击信号槽
+        """
         session = self.getCurrentSession()
         applicationWindow = self.mainApplicationWindow
 
@@ -233,6 +241,9 @@ class SessionManager(QtWidgets.QDialog):
 
 
     def getCurrentSession(self):
+        """
+        获取当前会话信息
+        """
         sessionIndex = self.treeServerManager.indexOfTopLevelItem(self.treeServerManager.currentItem())
         session = {
             'id': sessionIndex,
@@ -245,4 +256,107 @@ class SessionManager(QtWidgets.QDialog):
             'index': self.sessionIds[sessionIndex]
         }
 
-        return session            
+        return session
+
+
+    def loadSessionManager(self):
+        """
+        加载会话列表
+        """
+        try:
+            self.curs = self.conn.execute("SELECT id, name FROM sessions")
+        except OperationalError:
+            self.createSessionsTable()
+        
+        for row in self.curs:
+            newServer = QtWidgets.QTreeWidgetItem()
+            newServer.setText(0, row['name'])
+            # newServer.setIcon(0, QtGui.QIcon('../resources/icons/server.png'))
+            # newServer.setFlags(QtCore.Qt.ItemIsEditable|QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)            
+            
+            self.treeServerManager.addTopLevelItem(newServer)
+            self.sessionIds.append(row['id'])
+            
+        self.toggleSettingsPane()
+
+
+    def slotButtonSaveClicked(self):
+        """
+        保存按钮单击信号槽
+        """
+        session = self.getCurrentSession()
+        print(session)
+        sessionName = session['name']
+        sessionTreeItem = self.treeServerManager.currentItem()
+        
+        if sessionName[-1] == '*':
+            sessionName = sessionName[:len(sessionName) - 2]
+
+        if session['index'] is None:
+            self.curs = self.conn.execute("SELECT name FROM sqlite_master WHERE Type='table' and name = 'sessions'")
+
+            if self.curs.fetchone() is None:
+                self.createSessionsTable()
+
+            self.curs.execute(
+                "INSERT INTO sessions (name, network_type, hostname, username, password, port) VALUES (?, ?, ?, ?, ?, ?)",
+                    [
+                        sessionName,
+                        session['network_type'],
+                        session['hostname'],
+                        session['username'],
+                        session['password'],
+                        session['port']
+                    ]
+            )
+        else:
+            self.curs.execute(
+                "UPDATE sessions SET name = ?, network_type = ?, hostname = ?, username = ?, password = ?, port = ? WHERE id = ?",
+                    (
+                        sessionName,
+                        session['network_type'],
+                        session['hostname'],
+                        session['username'],
+                        session['password'],
+                        session['port'],
+                        session['index']
+                    )
+            )
+        self.conn.commit()
+
+        self.buttonSave.setEnabled(False)
+        sessionTreeItem.setText(0, sessionName)
+        # Set server icon to unedited
+        sessionTreeItem.setIcon(0, QtGui.QIcon('../resources/icons/server.png'))
+
+
+    def sessionModified(self):
+        """
+        每当会话信息更改时调用
+        """
+        session = self.treeServerManager.currentItem();
+        
+        name = session.text(0)
+        if (name[-2:] == ' *'):
+            name = name[:len(name) - 2]
+
+        # Check to see if session has been reverted back to normal or not to determine if we need to change the name
+        if (
+            self.textHostname.text() != self.currentSessionData['hostname'] or
+            self.textPassword.text() != self.currentSessionData['password'] or
+            self.textUser.text() != self.currentSessionData['username'] or
+            self.spinPort.value() != self.currentSessionData['port']
+        ):
+            changed = True
+        else:
+            changed = False
+            
+        if (changed == True):
+            # 如果会话信息有变动，则保存可用
+            session.setText(0, name + ' *')
+            self.buttonSave.setEnabled(True)
+            session.setIcon(0, QtGui.QIcon('../resources/icons/server_edit.png'))
+        else:
+            session.setText(0, name)
+            self.buttonSave.setEnabled(False)
+            session.setIcon(0, QtGui.QIcon('../resources/icons/server.png'))
