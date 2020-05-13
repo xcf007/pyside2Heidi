@@ -20,6 +20,7 @@ class SessionManager(QtWidgets.QDialog):
         # 主窗口
         self.mainApplicationWindow = mainApplicationWindow
         self.show()
+        # self.slotButtonOpenClicked()
 
     def initUI(self):
         self.labelNoSession = QtWidgets.QLabel('新用户吗? 为了连接一个MySQL服务器, 首先你得创建一个“会话”。只需要单击左下方的“新建”按钮来创建一个新的会话。\n\n给它起一个友好的名称（比如：“本地数据库服务器”）。这样你就能在下次启动HeidiSQL时能想起来。')
@@ -50,7 +51,7 @@ class SessionManager(QtWidgets.QDialog):
         self.treeServerManager = QtWidgets.QTreeWidget(self)
         self.treeServerManager.header().close()
         self.treeServerManager.setRootIsDecorated(False)
-        self.treeServerManager.itemSelectionChanged.connect(self.slotServerSelectionChanged)
+        self.treeServerManager.currentItemChanged.connect(self.slotServerSelectionChanged)  # 当前项改变时读取配置
         
         # Layout for password text field and password check box
         layoutH6 = QtWidgets.QHBoxLayout()
@@ -124,7 +125,7 @@ class SessionManager(QtWidgets.QDialog):
         # 信号设置
         buttonNew.clicked.connect(self.slotButtonNewClicked)
         # buttonCancel.clicked.connect(self.slotButtonCancelClicked)
-        # self.buttonDelete.clicked.connect(self.slotButtonDeleteClicked)
+        self.buttonDelete.clicked.connect(self.slotButtonDeleteClicked)
         self.buttonOpen.clicked.connect(self.slotButtonOpenClicked)
         self.buttonSave.clicked.connect(self.slotButtonSaveClicked)
 
@@ -144,9 +145,9 @@ class SessionManager(QtWidgets.QDialog):
 
 
     def addNewServer(self):
-        # Add new server to tree view
+        # 往树状视图中添加新服务器
         newServer = QtWidgets.QTreeWidgetItem()
-        newServer.setText(0, 'Unnamed')
+        newServer.setText(0, '未命名会话')
         newServer.setIcon(0, QtGui.QIcon('../resources/icons/server_add.png'))
         newServer.setFlags(QtCore.Qt.ItemIsEditable|QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
         
@@ -156,11 +157,12 @@ class SessionManager(QtWidgets.QDialog):
 
 
     def toggleSettingsPane(self):
+        """
+        切换右侧设置面板
+        """
         if self.treeServerManager.topLevelItemCount() > 0:
-            # Toggle settings window on - Settings窗口显示
-            self.labelNoSession.setVisible(False)
-            self.layoutV2.removeItem(self.layoutV2.itemAt(0))
-            self.layoutV2.removeItem(self.layoutV2.itemAt(1))
+            # Settings窗口显示
+            self.labelNoSession.setVisible(False)  # 隐藏无会话信息
             self.layoutV2.removeWidget(self.labelNoSession)
             self.layoutV2.insertWidget(0, self.tabWidget)
             self.layoutV2.setStretch(0, 1)
@@ -169,7 +171,7 @@ class SessionManager(QtWidgets.QDialog):
             self.buttonOpen.setEnabled(True)
             self.buttonSave.setEnabled(True)
         else:
-            # Toggle settings window off and show the no sessions message
+            # 关闭设置窗口，显示没有会话的信息
             self.labelNoSession.setVisible(True)
             self.layoutV2.removeWidget(self.tabWidget)
             self.layoutV2.insertSpacing(0, 17)
@@ -230,6 +232,7 @@ class SessionManager(QtWidgets.QDialog):
         applicationWindow = self.mainApplicationWindow
 
         try:
+            # 显示主窗口，隐藏会话窗口
             dbServer = DatabaseServer(session['name'], applicationWindow, session['hostname'], session['username'], session['password'], session['port'])
             applicationWindow.show()
             applicationWindow.addDbServer(dbServer)
@@ -271,8 +274,8 @@ class SessionManager(QtWidgets.QDialog):
         for row in self.curs:
             newServer = QtWidgets.QTreeWidgetItem()
             newServer.setText(0, row['name'])
-            # newServer.setIcon(0, QtGui.QIcon('../resources/icons/server.png'))
-            # newServer.setFlags(QtCore.Qt.ItemIsEditable|QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)            
+            newServer.setIcon(0, QtGui.QIcon('../resources/icons/server.png'))
+            newServer.setFlags(QtCore.Qt.ItemIsEditable|QtCore.Qt.ItemIsEnabled|QtCore.Qt.ItemIsSelectable)
             
             self.treeServerManager.addTopLevelItem(newServer)
             self.sessionIds.append(row['id'])
@@ -285,7 +288,6 @@ class SessionManager(QtWidgets.QDialog):
         保存按钮单击信号槽
         """
         session = self.getCurrentSession()
-        print(session)
         sessionName = session['name']
         sessionTreeItem = self.treeServerManager.currentItem()
         
@@ -360,3 +362,24 @@ class SessionManager(QtWidgets.QDialog):
             session.setText(0, name)
             self.buttonSave.setEnabled(False)
             session.setIcon(0, QtGui.QIcon('../resources/icons/server.png'))
+
+
+    def slotButtonDeleteClicked(self):
+        """
+        删除按钮单击信号槽
+        """
+        currentServer = self.treeServerManager.currentItem()
+        numServers = self.treeServerManager.topLevelItemCount()
+        
+        # 循环遍历服务器管理器直到找到我们要删除的服务器，并删除
+        for i in range(0, numServers):
+            if i == self.treeServerManager.indexOfTopLevelItem(currentServer):
+                sessionId = self.sessionIds.pop(i)
+                self.treeServerManager.takeTopLevelItem(i)
+                self.curs.execute("DELETE FROM sessions WHERE id = ?", [sessionId])
+                self.conn.commit()
+                break
+                
+        if numServers == 1:
+            # 如果删除了唯一的一个会话，那么要切换设置面板显示无会话界面
+            self.toggleSettingsPane()
