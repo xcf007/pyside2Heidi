@@ -31,8 +31,7 @@ class DatabaseServer:
         db.setHostName(hostname)
         db.setUserName(username)
         db.setPassword(password)
-        print('%s' % db.open() + '!!!!!!')
-
+        db.open()  # 打开数据库
         self.db = db
 
         serverItem = HeidiTreeWidgetItem()
@@ -45,15 +44,14 @@ class DatabaseServer:
         self.databaseTreeItem = serverItem
 
         applicationWindow.mainWindow.databaseTree.addTopLevelItem(serverItem)
-        print('2#!!!!!!')
+
 
     def execute(self, *args):
         """
         @type query: str
         @type params: list
         """
-        cursor = self.connection.cursor()
-        query = QSqlQuery(self.db)
+        query = QSqlQuery(db = self.db)
         query.prepare(args[0])
         if len(args) == 1:
             text = args[0]
@@ -62,9 +60,10 @@ class DatabaseServer:
             for value in args[1]:
                 query.addBindValue(value);
 
-        query.exec(args[0])
+        query.exec_(args[0])
 
         statusWindow = self.applicationWindow.mainWindow.txtStatus
+        # 状态窗口打印执行的SQL
         statusWindow.append("%s;" % text)
 
         return query
@@ -81,7 +80,7 @@ class DatabaseServer:
         while query.next():
             databaseIndex = query.record().indexOf('Database')
             self.addDatabase(query.value(databaseIndex))
-            print(query.value(databaseIndex))
+            # print(query.value(databaseIndex))
 
     def addDatabase(self, name):
         """
@@ -98,31 +97,24 @@ class DatabaseServer:
         processListTree = self.applicationWindow.mainWindow.processListTree
         processListTree.clear()
 
-        cursor = self.execute('SHOW FULL PROCESSLIST')
+        query = self.execute('SHOW FULL PROCESSLIST')
 
         numProcesses = 0
-        # for row in cursor:
-        while cursor.next():
+        while query.next():
             numProcesses += 1
 
-            # for value in row:
-            #     if row[value] is None:
-            #         row[value] = ''
-            #     elif type(row[value] != str):
-            #         row[value] = str(row[value])
-
             processItem = QTreeWidgetItem()
-            processItem.setText(0, str(cursor.value(cursor.record().indexOf('Id'))))
-            processItem.setText(1, str(cursor.value(cursor.record().indexOf('User'))))
-            processItem.setText(2, str(cursor.value(cursor.record().indexOf('Host'))))
-            processItem.setText(3, str(cursor.value(cursor.record().indexOf('db'))))
-            processItem.setText(4, str(cursor.value(cursor.record().indexOf('Command'))))
-            processItem.setText(5, str(cursor.value(cursor.record().indexOf('Time'))))
-            processItem.setText(6, str(cursor.value(cursor.record().indexOf('State'))))
-            processItem.setText(7, str(cursor.value(cursor.record().indexOf('Info'))))
+            processItem.setText(0, str(query.value(query.record().indexOf('Id'))))
+            processItem.setText(1, str(query.value(query.record().indexOf('User'))))
+            processItem.setText(2, str(query.value(query.record().indexOf('Host'))))
+            processItem.setText(3, str(query.value(query.record().indexOf('db'))))
+            processItem.setText(4, str(query.value(query.record().indexOf('Command'))))
+            processItem.setText(5, str(query.value(query.record().indexOf('Time'))))
+            processItem.setText(6, str(query.value(query.record().indexOf('State'))))
+            processItem.setText(7, str(query.value(query.record().indexOf('Info'))))
             processListTree.addTopLevelItem(processItem)
 
-        self.applicationWindow.mainWindow.processListTab.setTabText(0, "Process List (%d)" % numProcesses)
+        self.applicationWindow.mainWindow.processListTab.setTabText(0, "进程列表 (%d)" % numProcesses)
 
     def setCurrentDatabase(self, database):
         """
@@ -147,7 +139,7 @@ class DatabaseServer:
         """
         if len(self.collations) == 0:
             cursor = self.execute("SHOW COLLATION")
-            for collation in cursor:
-                self.collations.append(collation)
+            while cursor.next():
+                self.collations.append(cursor.value({'Collation': cursor.record().indexOf('Collation')}))
 
         return self.collations

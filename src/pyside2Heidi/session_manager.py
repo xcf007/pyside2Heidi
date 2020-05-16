@@ -2,9 +2,11 @@ from PySide2 import QtWidgets, QtGui, QtCore
 from PySide2.QtWidgets import QShortcut
 import MySQLdb
 from database.database_server import DatabaseServer
+import sqlite3
 
 
 class SessionManager(QtWidgets.QDialog):
+    
     def __init__(self, mainApplicationWindow, configDb):
         super(SessionManager, self).__init__()
 
@@ -20,7 +22,6 @@ class SessionManager(QtWidgets.QDialog):
         # 主窗口
         self.mainApplicationWindow = mainApplicationWindow
         self.show()
-        # self.slotButtonOpenClicked()
 
     def initUI(self):
         self.labelNoSession = QtWidgets.QLabel('新用户吗? 为了连接一个MySQL服务器, 首先你得创建一个“会话”。只需要单击左下方的“新建”按钮来创建一个新的会话。\n\n给它起一个友好的名称（比如：“本地数据库服务器”）。这样你就能在下次启动HeidiSQL时能想起来。')
@@ -235,6 +236,7 @@ class SessionManager(QtWidgets.QDialog):
             # 显示主窗口，隐藏会话窗口
             dbServer = DatabaseServer(session['name'], applicationWindow, session['hostname'], session['username'], session['password'], session['port'])
             applicationWindow.show()
+            # 添加数据库服务器
             applicationWindow.addDbServer(dbServer)
             self.hide()
 
@@ -268,9 +270,9 @@ class SessionManager(QtWidgets.QDialog):
         """
         try:
             self.curs = self.conn.execute("SELECT id, name FROM sessions")
-        except OperationalError:
+        except sqlite3.OperationalError:
             self.createSessionsTable()
-        
+
         for row in self.curs:
             newServer = QtWidgets.QTreeWidgetItem()
             newServer.setText(0, row['name'])
@@ -282,6 +284,23 @@ class SessionManager(QtWidgets.QDialog):
             
         self.toggleSettingsPane()
 
+    def createSessionsTable(self):
+        """
+        创建会话表
+        """
+        self.curs.execute("""
+            CREATE TABLE sessions(
+               id INTEGER PRIMARY KEY,
+               name TEXT,
+               network_type INTEGER,
+               hostname TEXT,
+               username TEXT,
+               password TEXT,
+               port INTEGER,
+               compressed BOOL,
+               startup_script TEXT
+            );
+        """)
 
     def slotButtonSaveClicked(self):
         """

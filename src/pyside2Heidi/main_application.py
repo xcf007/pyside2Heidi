@@ -5,7 +5,7 @@ from PySide2 import QtWidgets
 import sqlite3
 from main_application_window import MainApplicationWindow
 from session_manager import SessionManager
-os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = os.path.dirname(PySide2.__file__) + '/plugins/platforms'
+os.environ['QT_PLUGIN_PATH'] = os.path.dirname(PySide2.__file__) + '/plugins/'
 
 
 class MainApplication:
@@ -14,7 +14,7 @@ class MainApplication:
 
     def __init__(self):
         super().__init__()
-        
+
         self.configDb = sqlite3.connect('../userdata.db')
         configDb = self.configDb
         configDb.row_factory = sqlite3.Row
@@ -52,4 +52,4 @@ class MainApplication:
             );
         """)
 
-        self.configDb.commit()        
+        self.configDb.commit()
