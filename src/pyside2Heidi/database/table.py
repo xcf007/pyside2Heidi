@@ -111,16 +111,16 @@ class Table:
     def refresh(self):
         cursor = self.database.server.execute("SHOW TABLE STATUS FROM `%s` WHERE Name = '%s'" %
                   (self.database.name, self.name))
-        self.defaultCollation = cursor.fetchone()['Collation']
-
+        # self.defaultCollation = cursor.fetchone()['Collation']
         self.refreshColumns()
+
 
     def refreshColumns(self):
         cursor = self.database.server.execute("SHOW CREATE TABLE `%s`.`%s`" %
                 (self.database.name, self.name))
 
-        for row in cursor:
-            self.parseCreateTableString(row['Create Table'])
+        while cursor.next():
+            self.parseCreateTableString(cursor.value(cursor.record().indexOf('Create Table')))
 
     def parseCreateTableString(self, createTableString):
         createTablePattern = re.compile('CREATE TABLE `(?P<name>[a-z_]+)` \((?P<columns>.*?)\) ENGINE=(?P<engine>[a-z]+) (AUTO_INCREMENT=(?P<autoincrement>\d+) )?DEFAULT CHARSET=(?P<charset>[a-z\d]+)',

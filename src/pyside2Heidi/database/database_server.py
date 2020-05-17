@@ -140,6 +140,6 @@ class DatabaseServer:
         if len(self.collations) == 0:
             cursor = self.execute("SHOW COLLATION")
             while cursor.next():
-                self.collations.append(cursor.value({'Collation': cursor.record().indexOf('Collation')}))
+                self.collations.append({'Collation': cursor.value(cursor.record().indexOf('Collation'))})
 
         return self.collations

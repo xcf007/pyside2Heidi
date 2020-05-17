@@ -17,8 +17,9 @@ class MainApplicationWindow(QMainWindow):
 
         databaseInfoTable = mainWindow.databaseInfoTable
         mainWindow.databaseTree.currentItemChanged.connect(self.updateDatabaseTreeSelection)
-        # databaseInfoTable.horizontalHeader().sectionResized.connect(self.databaseTreeColumnResized)
-        # mainWindow.databaseTree.itemExpanded.connect(self.databaseTreeItemExpanded)
+        # 左侧数据库Tree展开处理
+        mainWindow.databaseTree.itemExpanded.connect(self.databaseTreeItemExpanded)
+        databaseInfoTable.horizontalHeader().sectionResized.connect(self.databaseTreeColumnResized)
         # mainWindow.txtStatus.setTextColor(QColor('darkBlue'))
         mainWindow.twMachineTabs.removeTab(mainWindow.twMachineTabs.indexOf(mainWindow.databaseTab))
         mainWindow.twMachineTabs.removeTab(mainWindow.twMachineTabs.indexOf(mainWindow.tableTab))
@@ -34,7 +35,7 @@ class MainApplicationWindow(QMainWindow):
         self.tableTab = TableTab(self)
         self.databaseTab = DatabaseTab(self)
 
-        # self.closeEvent = self.onClose
+        self.closeEvent = self.onClose
 
         # databaseInfoTable.setContextMenuPolicy(Qt.CustomContextMenu)
         # databaseInfoTable.customContextMenuRequested.connect(self.databaseContextMenu)
@@ -58,15 +59,15 @@ class MainApplicationWindow(QMainWindow):
             # 如果单击的是数据库则更新当前数据，如：USE `db`
             self.updateCurrentDatabase(currentItem)
         elif currentItem.itemType == 'server':
-            # Remove any tabs not dealing with server specific stuff
+            # 如果选择的服务器节点，则移除跟服务器不搭边的页签
             mainWindow = self.mainWindow
             mainWindow.twMachineTabs.removeTab(mainWindow.twMachineTabs.indexOf(mainWindow.databaseTab))
             mainWindow.twMachineTabs.removeTab(mainWindow.twMachineTabs.indexOf(mainWindow.tableTab))
 
-            # Initialize the machine tab
+            # 初始化机器页签
             machineTab = self.mainWindow.machineTab
             twMachineTabs = self.mainWindow.twMachineTabs
-            twMachineTabs.setTabText(twMachineTabs.indexOf(machineTab), "Host: %s" % currentItem.text(0))
+            twMachineTabs.setTabText(twMachineTabs.indexOf(machineTab), "主机: %s" % currentItem.text(0))
             twMachineTabs.setCurrentWidget(self.mainWindow.machineTab)
         elif currentItem.itemType == 'table':
             self.updateCurrentDatabase(currentItem.parent())
@@ -92,7 +93,13 @@ class MainApplicationWindow(QMainWindow):
         return self.servers[index]
 
     def showDatabaseTab(self):
+        """
+        显示数据库页签
+        """
         self.showTab(self.mainWindow.databaseTab, QIcon('../resources/icons/database.png'), 'Database:')
+
+    def showTableTab(self):
+        self.showTab(self.mainWindow.tableTab, QIcon('../resources/icons/table.png'), 'Table:')        
 
     def showTab(self, tab, name, icon):
         """
@@ -101,3 +108,36 @@ class MainApplicationWindow(QMainWindow):
         @type name: str
         """
         self.mainWindow.twMachineTabs.addTab(tab, name, icon)
+
+    def databaseTreeItemExpanded(self, item):
+        """
+        @type item: HeidiTreeWidgetItem
+        """
+        if item.itemType == 'database':
+            # 遍历当前服务器的数据库找到当前指定的数据库
+            database = self.currentServer.findDatabaseByName(item.text(0))
+            if len(database.tables) == 0:
+                database.refreshTables()
+
+
+    def onClose(self, closeEvent):
+        cursor = self.configDb.cursor()
+        # 保存窗口位置
+        cursor.execute("REPLACE INTO `settings` (name, value) VALUES ('mainwindow.x', ?), ('mainwindow.y', ?)", [self.pos().x(), self.pos().y()])
+
+        sizes = self.mainWindow.splitter_2.sizes()
+        for i, size in enumerate(sizes):
+            cursor.execute("REPLACE INTO `settings` (name, value) VALUES ('splitter_2.%d', ?)" % i, [size])
+
+        indexSize = self.mainWindow.indexes.columnWidth(0)
+        cursor.execute("REPLACE INTO `settings` (name, value) VALUES ('tableIndexes.columnWidth', ?)", [indexSize])
+
+        self.configDb.commit()
+
+        QMainWindow.closeEvent(self, closeEvent)
+
+    def databaseTreeColumnResized(self, index, previousWidth, width):
+        # Last item auto stretches to take up the rest of the table
+        if index != 7:
+            cursor = self.configDb.cursor()
+            cursor.execute("REPLACE INTO `settings` (name, value) VALUES ('databaseinfotable.%d.width', ?)" % index, [width])        

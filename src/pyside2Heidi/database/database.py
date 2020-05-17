@@ -34,21 +34,22 @@ class Database:
     def refreshTables(self):
         database = self.databaseTreeItem
 
-        # Clear old tables from the database tree view
+        # 移除数据库Tree视图老的表
         for index in reversed(range(database.childCount())):
             database.removeChild(database.child(index))
 
         cursor = self.server.execute("SHOW TABLE STATUS FROM `%s`" % self.name)
-        # for row in cursor:
         while cursor.next():
-            self.tables.append(Table(cursor.value(cursor.record().indexOf('Name')), rows = cursor.value(cursor.record().indexOf('Rows')),
-                  size = cursor.value(cursor.record().indexOf('Data_length')), created = cursor.value(cursor.record().indexOf('Create_time')),
-                  updated = cursor.value(cursor.record().indexOf('Update_time')), engine = cursor.value(cursor.record().indexOf('Engine')),
-                  comment = cursor.value(cursor.record().indexOf('Comment'))))
-            # Table(row['Name'], self, rows = row['Rows'], created = row['Create_time'],
-            #         size = row['Data_length'], created = row['Create_time'],
-            #         updated = row['Update_time'], engine = row['Engine'],
-            #         comment = row['Comment'])
+            self.tables.append(Table(
+                cursor.value(cursor.record().indexOf('Name')), 
+                self, # 数据库
+                rows = cursor.value(cursor.record().indexOf('Rows')),
+                size = cursor.value(cursor.record().indexOf('Data_length')), 
+                created = cursor.value(cursor.record().indexOf('Create_time')),
+                updated = cursor.value(cursor.record().indexOf('Update_time')), 
+                engine = cursor.value(cursor.record().indexOf('Engine')),
+                comment = cursor.value(cursor.record().indexOf('Comment'))
+            ))
 
     def getDatabaseTreeItem(self):
         """
@@ -57,6 +58,9 @@ class Database:
         return self.databaseTreeItem
 
     def setAsCurrentDatabase(self):
+        """
+        设置为当前数据库
+        """
         if len(self.tables) == 0:
             self.refreshTables()
 
